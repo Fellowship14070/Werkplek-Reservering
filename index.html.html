@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Werkplek Reservering — G08.32</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f8f8f6;--bg3:#f0efe8;
+  --text:#1a1a1a;--text2:#666;--text3:#999;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.2);
+  --accent:#c8572a;--accent-light:#f5ede8;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);font-size:14px;height:100vh;overflow:hidden}
+button,input,select{font-family:inherit}
+#loading-screen{position:fixed;inset:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:12px}
+#loading-screen p{font-size:13px;color:var(--text2)}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+input[type=text],input[type=password],select{width:100%;padding:7px 9px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-primary:hover{opacity:0.9}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius);padding:7px 12px;font-size:12px;cursor:pointer}
+.btn-secondary:hover{background:var(--bg2)}
+.lbl{font-size:11px;color:var(--text2);font-weight:500;margin-bottom:3px}
+#wrapper{height:100vh;display:none;flex-direction:column}
+#wrapper.visible{display:flex}
+#topbar{background:var(--bg);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#topbar h1{font-size:14px;font-weight:500;flex:1}
+#main-layout{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden}
+#sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+#content{display:flex;flex-direction:column;overflow:hidden}
+.s-row{display:flex;gap:6px}
+.s-row select{flex:1;font-size:12px;padding:5px 6px}
+.tag-btn{font-size:11px;padding:3px 9px;border:1px solid var(--border2);border-radius:20px;background:var(--bg);color:var(--text2);cursor:pointer}
+.tag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stat-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:6px 8px;text-align:center;flex:1}
+.stat-num{font-size:18px;font-weight:500}
+.stat-lbl{font-size:10px;color:var(--text3)}
+.selected-info{display:none;font-size:11px;padding:5px 8px;background:var(--accent-light);border-radius:var(--radius);color:var(--accent);border:1px solid var(--accent)}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.tab{padding:9px 16px;font-size:12px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+#tab-content{flex:1;overflow-y:auto;padding:14px}
+.view{display:none}
+.view.active{display:block}
+.filter-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.ftab{font-size:11px;padding:3px 9px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;background:var(--bg);color:var(--text2)}
+.ftab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.desk-card{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden}
+.desk-card-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;cursor:pointer;background:var(--bg2)}
+.desk-card-head:hover{background:var(--bg3)}
+.desk-card-body{display:none;padding:9px 10px;border-top:1px solid var(--border)}
+.desk-card-body.open{display:block}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500}
+.badge.vrij{background:#eaf3de;color:#3b6d11}
+.badge.bezet{background:#faece7;color:#993c1d}
+.timeline{position:relative;height:18px;background:var(--bg3);border-radius:4px;margin:6px 0;overflow:hidden}
+.tl-seg{position:absolute;height:100%;background:var(--accent);opacity:0.75;border-radius:2px}
+.res-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.res-item:last-child{border-bottom:none}
+.icon-btn{background:none;border:none;cursor:pointer;padding:3px 5px;color:var(--text2);font-size:15px}
+.icon-btn:hover{color:var(--accent)}
+.day-group{margin-bottom:14px}
+.day-group-head{font-size:12px;font-weight:500;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:7px}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:var(--radius);font-size:13px;z-index:999;opacity:0;transition:opacity 0.3s;max-width:300px;pointer-events:none;color:#fff;background:#333}
+.toast.show{opacity:1}
+.toast.ok{background:#27ae60}
+.toast.err{background:#c0392b}
+.sync-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;flex-shrink:0}
+.sync-dot.ok{background:#27ae60}.sync-dot.err{background:#e74c3c}.sync-dot.sync{background:#f39c12}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border-radius:var(--radius-lg);padding:18px;width:310px;border:1px solid var(--border2);max-height:90vh;overflow-y:auto}
+.modal h3{font-size:14px;font-weight:500;margin-bottom:12px}
+.modal-row{margin-bottom:8px}
+.modal-btns{display:flex;gap:8px;margin-top:14px}
+.modal-btns button{flex:1;padding:8px;border-radius:var(--radius);border:1px solid var(--border2);cursor:pointer;font-size:12px;background:var(--bg);color:var(--text)}
+.modal-btns .save{background:var(--accent);color:#fff;border-color:var(--accent)}
+.quick-btn{margin-top:7px;width:100%;font-size:11px;padding:5px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:var(--bg2);color:var(--text)}
+.quick-btn:hover{background:var(--bg3)}
+svg .desk{cursor:pointer}
+svg .desk.dimmed{opacity:0.25;pointer-events:none}
+svg .desk.occupied rect{pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p id="loading-msg">Verbinding maken met SharePoint...</p>
+</div>
+
+<div id="wrapper">
+  <div id="topbar">
+    <h1>Werkplek Reservering — Ruimte G08.32, Gemeente Den Haag</h1>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
+      <span class="sync-dot ok" id="sync-dot"></span>
+      <span id="sync-status">Gesynchroniseerd</span>
+    </div>
+  </div>
+  <div id="main-layout">
+    <div id="sidebar">
+      <div>
+        <div class="lbl">Datum</div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button class="icon-btn" onclick="changeDay(-1)" style="font-size:18px">‹</button>
+          <span id="date-disp" style="font-size:12px;flex:1;text-align:center"></span>
+          <button class="icon-btn" onclick="changeDay(1)" style="font-size:18px">›</button>
+        </div>
+      </div>
+      <div>
+        <div class="lbl">Tijdvak</div>
+        <div class="s-row">
+          <select id="van" onchange="renderAll()"></select>
+          <select id="tot" onchange="renderAll()"></select>
+        </div>
+      </div>
+      <div>
+        <div class="lbl">Naam</div>
+        <input type="text" id="naam" placeholder="Jouw naam">
+      </div>
+      <div>
+        <div class="lbl">Functie</div>
+        <select id="functie" onchange="onFunctieChange()">
+          <option value="">— kies —</option>
+          <option value="agent">Agent</option>
+          <option value="senior">Senior</option>
+          <option value="um">Unit manager</option>
+          <option value="om">Operationeel manager</option>
+          <option value="am">Afdelingsmanager</option>
+          <option value="tf">Traffic</option>
+          <option value="sm">Scrum master</option>
+        </select>
+      </div>
+      <div id="tags-section" style="display:none">
+        <div class="lbl">Werkzaamheden</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="tag-btn" data-tag="Calls" onclick="this.classList.toggle('active')">Calls</button>
+          <button class="tag-btn" data-tag="Mail" onclick="this.classList.toggle('active')">Mail</button>
+          <button class="tag-btn" data-tag="Chat" onclick="this.classList.toggle('active')">Chat</button>
+        </div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:6px">Bezetting</div>
+        <div style="display:flex;gap:5px">
+          <div class="stat-box"><div class="stat-num" id="stat-vrij">0</div><div class="stat-lbl">Vrij</div></div>
+          <div class="stat-box"><div class="stat-num" id="stat-bezet">0</div><div class="stat-lbl">Bezet</div></div>
+          <div class="stat-box"><div class="stat-num" id="stat-tot">0</div><div class="stat-lbl">Totaal</div></div>
+        </div>
+      </div>
+      <div class="selected-info" id="selected-info">Geselecteerd: <strong id="selected-name"></strong></div>
+      <button class="btn-primary" id="reserveer-btn" onclick="doReserveer()" style="width:100%;padding:9px">Werkplek reserveren</button>
+    </div>
+    <div id="content">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('plattegrond',this)">Plattegrond</div>
+        <div class="tab" onclick="switchTab('lijst',this)">Werkplek lijst</div>
+        <div class="tab" onclick="switchTab('dag',this)">Dag overzicht</div>
+      </div>
+      <div id="tab-content">
+        <div id="view-plattegrond" class="view active"></div>
+        <div id="view-lijst" class="view"></div>
+        <div id="view-dag" class="view"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+// ── SharePoint configuratie ──────────────────────────────────────────────────
+const SP_SITE = 'https://denhaag.sharepoint.com/sites/Kennisbank14070_DPZ_Kennisadviseurs';
+const SP_LIST = 'Werkplek Reserveringen';
+
+// ── Bureau- en typedefinities ─────────────────────────────────────────────────
+const TIMES = [];
+for(let h=6;h<=22;h++) for(let m=0;m<60;m+=15){if(h===22&&m>0)break;TIMES.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)}
+
+const DESKS = {
+  A12:{type:'sm'},TF01:{type:'tf'},TF02:{type:'tf'},
+  A05:{type:'agent'},A06:{type:'agent'},A07:{type:'agent'},A08:{type:'agent'},
+  A09:{type:'agent'},A10:{type:'agent'},A13:{type:'agent'},A14:{type:'agent'},
+  A01:{type:'agent'},A02:{type:'agent'},A03:{type:'agent'},A04:{type:'agent'},
+  INGE:{type:'personal',personal:true},
+  B01:{type:'agent'},B02:{type:'agent'},B03:{type:'agent'},
+  B04:{type:'agent'},B05:{type:'agent'},B06:{type:'agent'},B07:{type:'agent'},
+  B08:{type:'agent'},B09:{type:'agent'},B10:{type:'agent'},B11:{type:'agent'},
+  B12:{type:'agent'},B13:{type:'agent'},B14:{type:'agent'},B15:{type:'agent'},
+  OM1:{type:'om'},C02:{type:'agent'},U03:{type:'um'},C04:{type:'agent'},
+  C05:{type:'agent'},C06:{type:'agent'},S03:{type:'senior'},C07:{type:'agent'},
+  S04:{type:'senior'},C09:{type:'agent'},C11:{type:'agent'},C12:{type:'agent'},
+  C13:{type:'agent'},C14:{type:'agent'},C01:{type:'agent'},C03:{type:'agent'},
+  U01:{type:'um'},U02:{type:'um'},AM1:{type:'am'},S01:{type:'senior'},S02:{type:'senior'}
+};
+const TYPE_COLOR = {agent:'#2ecc71',senior:'#3498db',um:'#f39c12',om:'#9b59b6',am:'#1abc9c',tf:'#a0522d',sm:'#1e8449',personal:'#8d6e63'};
+const TYPE_BEZET = {agent:'#e8572a',senior:'#2980b9',um:'#d68910',om:'#7d3c98',am:'#17a589',tf:'#784212',sm:'#196f3d',personal:'#6d4c41'};
+const FUNC_TYPE  = {agent:'agent',senior:'senior',um:'um',om:'om',am:'am',tf:'tf',sm:'sm'};
+
+let state = {date:new Date(), reserveringen:[], selectedDesk:null, currentTab:'plattegrond', listFilter:'Alle'};
+let spDigest = null;
+
+// ── SharePoint REST API ───────────────────────────────────────────────────────
+function spHeaders(extra={}){
+  const h = {'Accept':'application/json;odata=nometadata','Content-Type':'application/json;odata=nometadata',...extra};
+  if(spDigest) h['X-RequestDigest'] = spDigest;
+  return h;
+}
+
+async function getDigest(){
+  try{
+    const r = await fetch(`${SP_SITE}/_api/contextinfo`, {method:'POST', headers:{'Accept':'application/json;odata=nometadata','Content-Type':'application/json'}});
+    const d = await r.json();
+    spDigest = d.FormDigestValue;
+  } catch(e){ console.warn('Digest ophalen mislukt',e); }
+}
+
+async function spGetItems(date){
+  // Haal alle items op voor de gekozen datum
+  const filter = `Datum eq '${date}'`;
+  const url = `${SP_SITE}/_api/web/lists/getbytitle('${encodeURIComponent(SP_LIST)}')/items?$filter=${encodeURIComponent(filter)}&$select=Id,Title,DeskID,Naam,Functie,vanTijd,totTijd,Datum,Skills&$top=500`;
+  const r = await fetch(url, {headers: spHeaders(), credentials:'include'});
+  if(!r.ok) throw new Error(`GET mislukt: ${r.status}`);
+  const d = await r.json();
+  return (d.value||[]).map(item => ({
+    id: item.Id,
+    desk: item.DeskID,
+    naam: item.Naam,
+    functie: item.Functie,
+    van: item.vanTijd,
+    tot: item.totTijd,
+    date: item.Datum,
+    tags: item.Skills ? item.Skills.split(',').map(s=>s.trim()).filter(Boolean) : []
+  }));
+}
+
+async function spCreateItem(res){
+  await getDigest();
+  const body = {
+    Title: `${res.desk} - ${res.naam} - ${res.date}`,
+    DeskID: res.desk,
+    Naam: res.naam,
+    Functie: res.functie,
+    vanTijd: res.van,
+    totTijd: res.tot,
+    Datum: res.date,
+    Skills: res.tags ? res.tags.join(', ') : ''
+  };
+  const url = `${SP_SITE}/_api/web/lists/getbytitle('${encodeURIComponent(SP_LIST)}')/items`;
+  const r = await fetch(url, {method:'POST', headers: spHeaders(), credentials:'include', body: JSON.stringify(body)});
+  if(!r.ok) throw new Error(`POST mislukt: ${r.status}`);
+  const d = await r.json();
+  return d.Id;
+}
+
+async function spUpdateItem(id, res){
+  await getDigest();
+  const body = {
+    Naam: res.naam,
+    Functie: res.functie,
+    vanTijd: res.van,
+    totTijd: res.tot,
+    Skills: res.tags ? res.tags.join(', ') : ''
+  };
+  const url = `${SP_SITE}/_api/web/lists/getbytitle('${encodeURIComponent(SP_LIST)}')/items(${id})`;
+  const r = await fetch(url, {method:'POST', headers: spHeaders({'X-HTTP-Method':'MERGE','IF-MATCH':'*'}), credentials:'include', body: JSON.stringify(body)});
+  if(!r.ok) throw new Error(`MERGE mislukt: ${r.status}`);
+}
+
+async function spDeleteItem(id){
+  await getDigest();
+  const url = `${SP_SITE}/_api/web/lists/getbytitle('${encodeURIComponent(SP_LIST)}')/items(${id})`;
+  const r = await fetch(url, {method:'POST', headers: spHeaders({'X-HTTP-Method':'DELETE','IF-MATCH':'*'}), credentials:'include'});
+  if(!r.ok) throw new Error(`DELETE mislukt: ${r.status}`);
+}
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+function setSyncStatus(s,msg){
+  const dot=document.getElementById('sync-dot'), txt=document.getElementById('sync-status');
+  if(dot) dot.className='sync-dot '+s;
+  if(txt) txt.textContent=msg;
+}
+
+async function syncLoad(){
+  setSyncStatus('sync','Synchroniseren...');
+  try{
+    const dateStr = dateKey(state.date);
+    const items = await spGetItems(dateStr);
+    state.reserveringen = items;
+    renderAll();
+    setSyncStatus('ok','Gesynchroniseerd');
+  } catch(e){
+    setSyncStatus('err','Sync mislukt');
+    console.error(e);
+  }
+}
+
+// ── Hulpfuncties ──────────────────────────────────────────────────────────────
+function dateKey(d){ return d.toISOString().split('T')[0] }
+function timeToMin(t){ const[h,m]=t.split(':').map(Number); return h*60+m }
+function isOverlap(s1,e1,s2,e2){ return timeToMin(s1)<timeToMin(e2)&&timeToMin(e1)>timeToMin(s2) }
+function getResByDesk(d,dt){ return state.reserveringen.filter(r=>r.desk===d&&r.date===dt) }
+function isBezet(d,v,t,dt,exId){ return getResByDesk(d,dt).some(r=>r.id!==exId&&isOverlap(v,t,r.van,r.tot)) }
+function isDeskBezet(d,dt,v,t){ return getResByDesk(d,dt).some(r=>isOverlap(v,t||'23:59',r.van,r.tot)) }
+
+// ── App init ──────────────────────────────────────────────────────────────────
+async function initApp(){
+  document.getElementById('loading-msg').textContent = 'Reserveringen ophalen...';
+  try{
+    TIMES.forEach(t=>{
+      document.getElementById('van').add(new Option(t,t));
+      document.getElementById('tot').add(new Option(t,t));
+    });
+    document.getElementById('van').value = '08:00';
+    document.getElementById('tot').value = '17:00';
+    updateDateDisp();
+    await syncLoad();
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('wrapper').classList.add('visible');
+    setInterval(syncLoad, 20000);
+  } catch(e){
+    document.getElementById('loading-msg').textContent = 'Kan geen verbinding maken met SharePoint. Controleer of je bent ingelogd op het netwerk.';
+    console.error(e);
+  }
+}
+
+function updateDateDisp(){
+  const d=state.date;
+  const days=['zo','ma','di','wo','do','vr','za'];
+  const months=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const el=document.getElementById('date-disp');
+  if(el) el.textContent=`${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function changeDay(n){
+  state.date=new Date(state.date.getTime()+n*86400000);
+  state.selectedDesk=null;
+  document.getElementById('selected-info').style.display='none';
+  updateDateDisp();
+  syncLoad();
+}
+
+function onFunctieChange(){
+  document.getElementById('tags-section').style.display=document.getElementById('functie').value==='agent'?'block':'none';
+  state.selectedDesk=null;
+  document.getElementById('selected-info').style.display='none';
+  renderAll();
+}
+
+function getActiveTags(){ return [...document.querySelectorAll('.tag-btn.active')].map(b=>b.dataset.tag) }
+
+function updateStats(){
+  const dt=dateKey(state.date), v=document.getElementById('van').value, t=document.getElementById('tot').value;
+  const all=Object.keys(DESKS).filter(d=>!DESKS[d].personal);
+  const bezet=all.filter(d=>isDeskBezet(d,dt,v,t)).length;
+  document.getElementById('stat-vrij').textContent=all.length-bezet;
+  document.getElementById('stat-bezet').textContent=bezet;
+  document.getElementById('stat-tot').textContent=all.length;
+}
+
+async function doReserveer(){
+  const naam=document.getElementById('naam').value.trim();
+  const functie=document.getElementById('functie').value;
+  const van=document.getElementById('van').value, tot=document.getElementById('tot').value;
+  const desk=state.selectedDesk;
+  if(!naam) return showToast('Vul een naam in','err');
+  if(!functie) return showToast('Kies een functie','err');
+  if(!desk) return showToast('Kies een bureau op de plattegrond','err');
+  if(timeToMin(van)>=timeToMin(tot)) return showToast('Eindtijd moet na begintijd liggen','err');
+  if(FUNC_TYPE[functie]!==DESKS[desk].type) return showToast(`Dit bureau is voor ${DESKS[desk].type}. Kies een ander bureau.`,'err');
+  const dt=dateKey(state.date);
+  if(isBezet(desk,van,tot,dt,null)) return showToast('Al gereserveerd in dit tijdvak','err');
+  const tags=functie==='agent'?getActiveTags():[];
+  const res={desk,naam,functie,van,tot,tags,date:dt};
+  setSyncStatus('sync','Opslaan...');
+  const btn=document.getElementById('reserveer-btn');
+  btn.disabled=true;
+  try{
+    const newId=await spCreateItem(res);
+    res.id=newId;
+    state.reserveringen.push(res);
+    state.selectedDesk=null;
+    document.getElementById('selected-info').style.display='none';
+    setSyncStatus('ok','Gesynchroniseerd');
+    showToast(`${desk} gereserveerd voor ${naam}`,'ok');
+    renderAll();
+  } catch(e){
+    setSyncStatus('err','Opslaan mislukt');
+    showToast('Opslaan mislukt. Probeer opnieuw.','err');
+    console.error(e);
+  } finally{ btn.disabled=false; }
+}
+
+async function deleteRes(id){
+  setSyncStatus('sync','Verwijderen...');
+  try{
+    await spDeleteItem(id);
+    state.reserveringen=state.reserveringen.filter(r=>r.id!==id);
+    setSyncStatus('ok','Gesynchroniseerd');
+    showToast('Reservering verwijderd','ok');
+    renderAll();
+  } catch(e){
+    setSyncStatus('err','Verwijderen mislukt');
+    showToast('Verwijderen mislukt','err');
+    console.error(e);
+  }
+}
+
+function editRes(id){
+  const r=state.reserveringen.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('modal-inner').innerHTML=`
+    <h3>Bewerken — ${r.desk}</h3>
+    <div class="modal-row"><div class="lbl">Naam</div><input type="text" id="m-naam" value="${r.naam}"></div>
+    <div class="modal-row"><div class="lbl">Functie</div><select id="m-functie">${['agent','senior','um','om','am','tf','sm'].map(f=>`<option value="${f}"${r.functie===f?' selected':''}>${f}</option>`).join('')}</select></div>
+    <div class="modal-row"><div class="lbl">Van</div><select id="m-van">${TIMES.map(t=>`<option${t===r.van?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="modal-row"><div class="lbl">Tot</div><select id="m-tot">${TIMES.map(t=>`<option${t===r.tot?' selected':''}>${t}</option>`).join('')}</select></div>
+    ${r.functie==='agent'?`<div class="modal-row"><div class="lbl">Werkzaamheden</div><div style="display:flex;gap:4px">${['Calls','Mail','Chat'].map(t=>`<button class="tag-btn${r.tags&&r.tags.includes(t)?' active':''}" onclick="this.classList.toggle('active')" data-tag="${t}">${t}</button>`).join('')}</div></div>`:''}
+    <div class="modal-btns"><button onclick="closeModal()">Annuleren</button><button class="save" onclick="saveModal(${id})">Opslaan</button></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open') }
+
+async function saveModal(id){
+  const r=state.reserveringen.find(x=>x.id===id);
+  if(!r) return;
+  const naam=document.getElementById('m-naam').value.trim();
+  const functie=document.getElementById('m-functie').value;
+  const van=document.getElementById('m-van').value, tot=document.getElementById('m-tot').value;
+  if(!naam) return showToast('Naam verplicht','err');
+  if(timeToMin(van)>=timeToMin(tot)) return showToast('Eindtijd moet na begintijd','err');
+  if(FUNC_TYPE[functie]!==DESKS[r.desk].type) return showToast('Functie klopt niet','err');
+  if(isBezet(r.desk,van,tot,r.date,id)) return showToast('Tijdvak overlapt','err');
+  const tags=[...document.querySelectorAll('#modal-inner .tag-btn.active')].map(b=>b.dataset.tag);
+  setSyncStatus('sync','Opslaan...');
+  try{
+    await spUpdateItem(id,{naam,functie,van,tot,tags});
+    Object.assign(r,{naam,functie,van,tot,tags});
+    setSyncStatus('ok','Gesynchroniseerd');
+    closeModal(); renderAll(); showToast('Opgeslagen','ok');
+  } catch(e){
+    setSyncStatus('err','Opslaan mislukt');
+    showToast('Opslaan mislukt','err');
+    console.error(e);
+  }
+}
+
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',3000);
+}
+
+function switchTab(name,el){
+  state.currentTab=name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  renderAll();
+}
+
+function renderAll(){ updateStats(); renderPlattegrond(); renderLijst(); renderDag(); }
+
+function deskSelected(desk){
+  const f=document.getElementById('functie').value;
+  if(!f) return showToast('Selecteer eerst een functie','err');
+  if(DESKS[desk].type!==FUNC_TYPE[f]) return showToast('Dit bureau past niet bij jouw functie','err');
+  const v=document.getElementById('van').value, t=document.getElementById('tot').value;
+  if(isBezet(desk,v,t,dateKey(state.date),null)) return showToast('Bureau al bezet in dit tijdvak','err');
+  state.selectedDesk=desk;
+  document.getElementById('selected-name').textContent=desk;
+  document.getElementById('selected-info').style.display='block';
+  renderAll();
+}
+
+// ── Plattegrond ───────────────────────────────────────────────────────────────
+function renderPlattegrond(){
+  const el=document.getElementById('view-plattegrond');
+  if(!el.classList.contains('active')) return;
+  const dt=dateKey(state.date);
+  const v=document.getElementById('van').value, t=document.getElementById('tot').value;
+  const uf=document.getElementById('functie').value;
+  const W=640,H=520,dw=42,dh=30,gap=4,colW=dw*2+gap+14,rowH=dh*2+gap+8,sx=14,sy=52;
+  const units=[
+    [[0,0],['A12',null,'TF01','TF02']],[[0,1],['A05','A06','A07','A08']],
+    [[0,2],['A09','A10','A13','A14']],[[0,3],['A01','A02','A03','A04']],
+    [[1,0],['INGE','B01','B02','B03']],[[1,1],['B04','B05','B06','B07']],
+    [[1,2],['B08','B09','B10','B11']],[[1,3],['B12','B13','B14','B15']],
+    [[2,0],['OM1','C02','U03','C04']],[[2,1],['C05','C06','S03','C07']],
+    [[2,2],['S04','C09','C11','C12']],[[2,3],['C13','C14','C01','C03']],
+  ];
+  function xy(col,row,pos){
+    return[sx+col*(colW+18)+[0,1,0,1][pos]*(dw+gap), sy+row*(rowH+8)+[0,0,1,1][pos]*(dh+gap)];
+  }
+  function deskSvg(d,x,y){
+    const info=DESKS[d];
+    const bezet=isDeskBezet(d,dt,v,t);
+    const sel=state.selectedDesk===d;
+    const personal=info.personal;
+    const dimmed=uf&&!personal&&!bezet&&FUNC_TYPE[uf]!==info.type;
+    const hasBk=getResByDesk(d,dt).length>0;
+    const fill=sel?'#c8572a':bezet?TYPE_BEZET[info.type]:'transparent';
+    const stroke=TYPE_COLOR[info.type]||'#888';
+    const tc=sel||bezet?'#fff':stroke;
+    const canClick=!personal&&!bezet&&(!uf||FUNC_TYPE[uf]===info.type);
+    const cls=`desk${dimmed?' dimmed':''}${bezet?' occupied':''}`;
+    const onclick=canClick?`onclick="deskSelected('${d}')" tabindex="0" role="button"`:`role="img"`;
+    return`<g class="${cls}" ${onclick} aria-label="${d}">
+      <rect x="${x}" y="${y}" width="${dw}" height="${dh}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="${sel?2:1.5}" ${personal?'stroke-dasharray="3,2"':''}/>
+      <text x="${x+dw/2}" y="${y+dh/2+4}" text-anchor="middle" font-size="9" fill="${tc}" font-weight="500">${d}</text>
+      ${sel?`<text x="${x+dw-6}" y="${y+9}" font-size="9" fill="#fff">✓</text>`:''}
+      ${hasBk&&!bezet?`<circle cx="${x+dw-4}" cy="${y+4}" r="3" fill="#e8572a"/>`:''}
+    </g>`;
+  }
+  let html='';
+  units.forEach(([[col,row],dl])=>dl.forEach((d,pos)=>{if(d){const[x,y]=xy(col,row,pos);html+=deskSvg(d,x,y)}}));
+  [{id:'U01',y:sy+10},{id:'U02',y:sy+48},{id:'AM1',y:sy+96},{id:'S01',y:sy+144},{id:'S02',y:sy+182}].forEach(({id,y})=>{html+=deskSvg(id,W-70,y)});
+  const leg=[{type:'agent',l:'Agent'},{type:'senior',l:'Senior'},{type:'um',l:'UM'},{type:'om',l:'OM'},{type:'am',l:'AM'},{type:'tf',l:'Traffic'},{type:'sm',l:'Scrum'}];
+  const legHtml=leg.map((l,i)=>`<g transform="translate(${14+i*78},4)"><rect x="0" y="2" width="12" height="12" rx="2" fill="${TYPE_COLOR[l.type]}" opacity="0.8"/><text x="16" y="13" font-size="10" fill="#888">${l.l}</text></g>`).join('')
+    +`<g transform="translate(${14+leg.length*78+4},4)"><circle cx="6" cy="8" r="4" fill="#e8572a"/><text x="14" y="13" font-size="10" fill="#888">Eerder bezet</text></g>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <title>Plattegrond G08.32</title>${legHtml}
+    <text x="${W-10}" y="30" text-anchor="end" font-size="11" fill="#bbb" font-weight="500">G08.32</text>
+    ${['Rij 1','Rij 2','Rij 3'].map((l,i)=>`<text x="${sx+i*(colW+18)+dw}" y="${sy-8}" text-anchor="middle" font-size="10" fill="#aaa">${l}</text>`).join('')}
+    <text x="${W-70+dw/2}" y="${sy-8}" text-anchor="middle" font-size="10" fill="#aaa">Los</text>
+    ${html}</svg>`;
+}
+
+// ── Werkplek lijst ────────────────────────────────────────────────────────────
+function renderLijst(){
+  const el=document.getElementById('view-lijst');
+  if(!el.classList.contains('active')) return;
+  const dt=dateKey(state.date), v=document.getElementById('van').value, t=document.getElementById('tot').value;
+  const fm={Alle:null,Agents:'agent',Senior:'senior',UM:'um',OM:'om',AM:'am',Traffic:'tf',Scrum:'sm'};
+  const tabs=['Alle','Agents','Senior','UM','OM','AM','Traffic','Scrum'];
+  let html=`<div class="filter-tabs">${tabs.map(f=>`<button class="ftab${f===state.listFilter?' active':''}" onclick="setListFilter('${f}')">${f}</button>`).join('')}</div>`;
+  const ft=fm[state.listFilter];
+  Object.keys(DESKS).filter(d=>!DESKS[d].personal&&(!ft||DESKS[d].type===ft)).sort().forEach(d=>{
+    const ress=getResByDesk(d,dt);
+    const bezet=isDeskBezet(d,dt,v,t);
+    const segs=ress.map(r=>{const s=(timeToMin(r.van)-360)/960*100,w=(timeToMin(r.tot)-timeToMin(r.van))/960*100;return`<div class="tl-seg" style="left:${s.toFixed(1)}%;width:${w.toFixed(1)}%"></div>`;}).join('');
+    const rows=ress.map(r=>`<div class="res-item"><span><strong>${r.van}–${r.tot}</strong> ${r.naam}${r.tags&&r.tags.length?` <em style="color:#aaa;font-style:normal">[${r.tags.join(', ')}]</em>`:''}</span><span><button class="icon-btn" onclick="editRes(${r.id})" title="Bewerken"><i class="ti ti-edit"></i></button><button class="icon-btn" onclick="deleteRes(${r.id})" title="Verwijderen"><i class="ti ti-trash"></i></button></span></div>`).join('');
+    html+=`<div class="desk-card"><div class="desk-card-head" onclick="toggleCard('c-${d}')"><span style="font-size:12px;font-weight:500">${d}</span><span style="display:flex;gap:6px;align-items:center"><span class="badge ${bezet?'bezet':'vrij'}">${bezet?'Bezet':'Vrij'}</span><i class="ti ti-chevron-down" style="font-size:12px;color:#aaa"></i></span></div><div class="desk-card-body" id="c-${d}"><div style="font-size:10px;color:#aaa;margin-bottom:3px">06:00 ──────── 22:00</div><div class="timeline">${segs}</div>${rows||'<div style="font-size:11px;color:#aaa">Geen reserveringen</div>'}${!bezet?`<button class="quick-btn" onclick="quickReserve('${d}')">Reserveer ${d} voor ${v}–${t}</button>`:''}</div></div>`;
+  });
+  el.innerHTML=html;
+}
+
+function toggleCard(id){ const e=document.getElementById(id); if(e) e.classList.toggle('open') }
+function setListFilter(f){ state.listFilter=f; renderLijst() }
+
+async function quickReserve(desk){
+  const naam=document.getElementById('naam').value.trim();
+  const functie=document.getElementById('functie').value;
+  if(!naam) return showToast('Vul naam in de sidebar in','err');
+  if(!functie) return showToast('Kies functie in de sidebar','err');
+  if(FUNC_TYPE[functie]!==DESKS[desk].type) return showToast('Functie klopt niet met bureautype','err');
+  const v=document.getElementById('van').value, t=document.getElementById('tot').value;
+  const dt=dateKey(state.date);
+  if(isBezet(desk,v,t,dt,null)) return showToast('Tijdvak al bezet','err');
+  const tags=functie==='agent'?getActiveTags():[];
+  const res={desk,naam,functie,van:v,tot:t,tags,date:dt};
+  setSyncStatus('sync','Opslaan...');
+  try{
+    const newId=await spCreateItem(res);
+    res.id=newId;
+    state.reserveringen.push(res);
+    setSyncStatus('ok','Gesynchroniseerd');
+    renderAll(); showToast(`${desk} gereserveerd`,'ok');
+  } catch(e){
+    setSyncStatus('err','Opslaan mislukt');
+    showToast('Opslaan mislukt','err');
+  }
+}
+
+// ── Dag overzicht ─────────────────────────────────────────────────────────────
+function renderDag(){
+  const el=document.getElementById('view-dag');
+  if(!el.classList.contains('active')) return;
+  const dt=dateKey(state.date);
+  const ress=state.reserveringen.filter(r=>r.date===dt).sort((a,b)=>a.van.localeCompare(b.van));
+  if(!ress.length){ el.innerHTML='<div style="font-size:13px;color:#aaa;padding:16px 0">Geen reserveringen op deze dag.</div>'; return }
+  const g={};
+  ress.forEach(r=>{ if(!g[r.van]) g[r.van]=[]; g[r.van].push(r) });
+  el.innerHTML=Object.keys(g).sort().map(t=>`<div class="day-group"><div class="day-group-head"><i class="ti ti-clock" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>${t}</div>${g[t].map(r=>`<div class="res-item"><div><span style="font-weight:500;font-size:12px">${r.desk}</span><span style="font-size:12px;color:#888;margin-left:7px">${r.naam}</span><span style="font-size:11px;color:#aaa;margin-left:5px">${r.van}–${r.tot}</span>${r.tags&&r.tags.length?`<span style="font-size:10px;color:#aaa;margin-left:5px">[${r.tags.join(', ')}]</span>`:''}</div><span><button class="icon-btn" onclick="editRes(${r.id})" title="Bewerken"><i class="ti ti-edit"></i></button><button class="icon-btn" onclick="deleteRes(${r.id})" title="Verwijderen"><i class="ti ti-trash"></i></button></span></div>`).join('')}</div>`).join('');
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+state.date = new Date();
+initApp();
+</script>
+</body>
+</html>
